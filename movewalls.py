@@ -35,6 +35,9 @@ SCREEN_HEIGHT = 600
 class Player(pygame.sprite.Sprite):
     """ This class represents the bar at the bottom that the player
     controls. """
+
+    prev_x = 0
+    prev_y = 0
  
     # Constructor function
     def __init__(self, x, y):
@@ -42,8 +45,10 @@ class Player(pygame.sprite.Sprite):
         super().__init__()
  
         # Set height, width
-        self.image = pygame.Surface([15, 15])
-        self.image.fill(WHITE)
+        #self.image = pygame.Surface([15, 15])
+        #self.image.fill(WHITE)
+        self.image = pygame.image.load("/home/andrew/pygame/images/PNG/Hulls_Color_D/Hull_01_64.png").convert()
+        
  
         # Make our top-left corner the passed-in location.
         self.rect = self.image.get_rect()
@@ -54,11 +59,39 @@ class Player(pygame.sprite.Sprite):
         self.change_x = 0
         self.change_y = 0
         self.walls = None
+
+    def rot_center(self, angle):
+    
+        rotated_image = pygame.transform.rotate(self.image, angle)
+        self.rect = rotated_image.get_rect()
+        self.image = rotated_image
+
  
     def changespeed(self, x, y):
         """ Change the speed of the player. """
         self.change_x += x
         self.change_y += y
+        #print('change_x ', self.change_x, ' change_y ', self.change_y)
+
+    def setposition(self, x, y):
+
+        
+        print('prev = ', self.rect, ' ', x, ' ', y)
+        self.prev_x = self.rect.x
+        self.prev_y = self.rect.y
+        if (x > self.change_x and y == self.change_y):
+            print('rotating')
+            self.rot_center(10)
+        else:
+            print('moving')
+            self.rect.x += x
+            self.rect.y += y
+
+        self.change_x = x
+        self.change_y = y
+        print('new = ', self.rect)
+
+        #print(f"x={self.rect.x} y={self.rect.y} dx={x} dy={y}")
 
     def stop(self):
         self.change_x = 0
@@ -67,31 +100,36 @@ class Player(pygame.sprite.Sprite):
     def update(self):
         """ Update the player position. """
         # Move left/right
-        self.rect.x += self.change_x
+        #self.rect.x += self.change_x
  
         # Did this update cause us to hit a wall?
         block_hit_list = pygame.sprite.spritecollide(self, self.walls, False)
         for block in block_hit_list:
-            # If we are moving right, set our right side to the left side of
-            # the item we hit
-            if self.change_x > 0:
-                self.rect.right = block.rect.left
-            else:
-                # Otherwise if we are moving left, do the opposite.
-                self.rect.left = block.rect.right
- 
-        # Move up/down
-        self.rect.y += self.change_y
- 
-        # Check and see if we hit anything
-        block_hit_list = pygame.sprite.spritecollide(self, self.walls, False)
-        for block in block_hit_list:
- 
-            # Reset our position based on the top/bottom of the object.
-            if self.change_y > 0:
-                self.rect.bottom = block.rect.top
-            else:
-                self.rect.top = block.rect.bottom
+            #print('hit wall ')
+            #print('self: ', self.rect, ' block: ', block.rect)
+
+            # print(abs(self.rect.left - block.rect.right))
+            # if (abs(self.rect.left - block.rect.right) < 3):
+            #     print('hit right')
+            #     if (self.rect.x <= self.prev_x):
+            #         self.rect.x = self.prev_x
+            # elif (abs(self.rect.right - block.rect.left) < 3):
+            #     print("hit left")
+            #     if (self.rect.x > self.prev_x):
+            #         self.rect.x = self.prev_x
+            # elif (self.rect.top == block.rect.bottom-1):
+            #     print("hit bottom")
+            # elif (self.rect.bottom == block.rect.top+1):
+            #     print("hit top")
+
+            # if (self.rect.x < self.prev_x and self.rect.x < block.rect.right):
+            #     self.rect.x = self.prev_x
+            # elif (self.rect.y < self.prev_y and self.rect.y < block.rect.bottom):
+            #     self.rect.y = self.prev_y
+
+            self.rect.x = self.prev_x
+            self.rect.y = self.prev_y
+            #print('new self ', self.rect)
  
  
 class Wall(pygame.sprite.Sprite):
@@ -137,6 +175,10 @@ all_sprite_list.add(wall)
 wall = Wall(10, 200, 100, 10)
 wall_list.add(wall)
 all_sprite_list.add(wall)
+
+wall = Wall(200,200, 100, 100)
+wall_list.add(wall)
+all_sprite_list.add(wall)
  
 # Create the player paddle object
 player = Player(50, 50)
@@ -151,40 +193,58 @@ done = False
 pygame.joystick.init()
 joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_count())]
 print('joysticks = ', joysticks)
+speed = 2
+dy = 0
+dx = 0
  
 while not done:
  
     for event in pygame.event.get():
+
+        # axis_x, axis_y = (joysticks[0].get_axis(0), joysticks[0].get_axis(1))
+
+        # player.setposition(speed * axis_x, speed * axis_y)
+        
         if event.type == pygame.QUIT:
             done = True
  
         elif event.type == pygame.JOYBUTTONDOWN:
             print('joystick down event')
 
-        elif event.type == pygame.JOYAXISMOTION:
-            print(f"axis = {event.axis} {event.value}")
-            if event.axis == 0:
-                # if event.value < 0:
-                #     player.changespeed(0, event.value/10)
-                # else:
-                player.changespeed(event.value/10, 0)
-            elif event.axis == 1:
-                # if event.value < 0:
-                #     player.changespeed(event.value/10, 0)
-                # else:
-                player.changespeed(0, event.value/10)
+        
 
-        elif event.type == pygame.JOYHATMOTION:
-            if (event.dict['value'] == (0,1)):
-                player.changespeed(0,-3)
-            elif (event.dict['value'] == (1,0)):
-                player.changespeed(3,0)
-            elif (event.dict['value'] == (0,-1)):
-                player.changespeed(0,3)
-            elif (event.dict['value'] == (-1,0)):
-                player.changespeed(-3,0)
-            elif (event.dict['value'] == (0,0)):
-                player.stop()
+        # if abs(axis_x) > 0.1:
+        #     dx = speed * axis_x
+        #     player.setposition(dx, dy)
+        # if abs(axis_y) > 0.1:
+        #     dy = speed * axis_y
+        #     player.setposition(dx, dy)
+        
+
+        # elif event.type == pygame.JOYAXISMOTION:
+        #     print(f"axis = {event.axis} {event.value}")
+        #     if event.axis == 0:
+        #         # if event.value < 0:
+        #         #     player.changespeed(0, event.value/10)
+        #         # else:
+        #         player.changespeed(event.value/10, 0)
+        #     elif event.axis == 1:
+        #         # if event.value < 0:
+        #         #     player.changespeed(event.value/10, 0)
+        #         # else:
+        #         player.changespeed(0, event.value/10)
+
+        # elif event.type == pygame.JOYHATMOTION:
+        #     if (event.dict['value'] == (0,1)):
+        #         player.changespeed(0,-3)
+        #     elif (event.dict['value'] == (1,0)):
+        #         player.changespeed(3,0)
+        #     elif (event.dict['value'] == (0,-1)):
+        #         player.changespeed(0,3)
+        #     elif (event.dict['value'] == (-1,0)):
+        #         player.changespeed(-3,0)
+        #     elif (event.dict['value'] == (0,0)):
+        #         player.stop()
 
 
         elif event.type == pygame.KEYDOWN:
@@ -207,8 +267,11 @@ while not done:
             elif event.key == pygame.K_DOWN:
                 player.changespeed(0, -3)
  
-    all_sprite_list.update()
  
+    axis_x, axis_y = (joysticks[0].get_axis(0), joysticks[0].get_axis(1))
+    player.setposition(speed * axis_x, speed * axis_y)
+    #player.rot_center(45)
+    all_sprite_list.update()
     screen.fill(BLACK)
  
     all_sprite_list.draw(screen)
